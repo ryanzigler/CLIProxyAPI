@@ -22,9 +22,13 @@ if [ -e "$data/config/config.yaml" ]; then
 	exit 1
 fi
 
-mkdir -p "$data/config" "$data/auths" "$data/logs" "$project"
-chmod 700 "$data" "$data/config" "$data/auths"
+mkdir -p "$data/config" "$data/auths" "$data/logs" "$data/keys" "$project"
+# Same layout as the old runtime folder: ryan owns the folders (so the client
+# key stays readable over SSH), root owns the config and logins inside them.
+chown ryan:users "$data" "$data/config" "$data/auths" "$data/logs" "$data/keys"
+chmod 700 "$data" "$data/config" "$data/auths" "$data/keys"
 cp -p "$old"/runtime/auths/*.json "$data/auths/"
+cp -p "$old"/runtime/keys/* "$data/keys/" 2>/dev/null || true
 
 # Drop the old plugin block and switch routing to earliest-reset, keeping the
 # rest of the routing block (retry, cooldown, affinity TTL) as it is.

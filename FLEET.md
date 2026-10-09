@@ -58,7 +58,7 @@ cd web && bun install && bun run lint && bun test
 
 - **Files:** `deploy/nas/compose.yaml` is the Container Manager project file.
 - **Folders:**
-  - Data: `/volume1/docker/fleet-controller`, holding `config`, `auths` and `logs`.
+  - Data: `/volume1/docker/fleet-controller`, holding `config`, `auths`, `logs` and `keys` (the client key; not mounted).
   - Project: `/volume1/docker/projects/fleet-controller`.
 - **First move:** `deploy/nas/migrate.sh` moves the old `/volume1/docker/cli-proxy-api`
   install over once.
