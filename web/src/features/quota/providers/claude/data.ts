@@ -13,24 +13,18 @@ import type {
   ClaudeUsageWindow,
   ClaudeUsagePayload,
 } from '@/types';
-import { apiCallApi, getApiCallErrorMessage } from '@/services/api';
 import {
-  CLAUDE_PROFILE_URL,
-  CLAUDE_USAGE_URL,
-  CLAUDE_REQUEST_HEADERS,
   CLAUDE_USAGE_WINDOW_KEYS,
   claudePeriodHours,
   normalizeNumberValue,
   normalizeStringValue,
-  parseClaudeUsagePayload,
   formatQuotaResetTime,
   resolveResetMs,
-  createStatusError,
   isClaudeFile,
   isDisabledAuthFile,
 } from '@/utils/quota';
-import { normalizeAuthIndex } from '@/utils/authIndex';
 import type { QuotaProviderData } from '../types';
+import { claudeWindowsFromServer } from '../../serverQuota';
 
 export type ClaudeQuotaData = {
   windows: ClaudeQuotaWindow[];
@@ -130,23 +124,6 @@ const normalizeFlagValue = (value: unknown): boolean | undefined => {
   return undefined;
 };
 
-const parseClaudeProfilePayload = (payload: unknown): ClaudeProfileResponse | null => {
-  if (payload === undefined || payload === null) return null;
-  if (typeof payload === 'string') {
-    const trimmed = payload.trim();
-    if (!trimmed) return null;
-    try {
-      return JSON.parse(trimmed) as ClaudeProfileResponse;
-    } catch {
-      return null;
-    }
-  }
-  if (typeof payload === 'object') {
-    return payload as ClaudeProfileResponse;
-  }
-  return null;
-};
-
 export const resolveClaudePlanType = (profile: ClaudeProfileResponse | null): string | null => {
   if (!profile) return null;
 
@@ -174,53 +151,11 @@ export const resolveClaudePlanType = (profile: ClaudeProfileResponse | null): st
 };
 
 const fetchClaudeQuota = async (file: AuthFileItem, t: TFunction): Promise<ClaudeQuotaData> => {
-  const rawAuthIndex = file['auth_index'] ?? file.authIndex;
-  const authIndex = normalizeAuthIndex(rawAuthIndex);
-  if (!authIndex) {
-    throw new Error(t('claude_quota.missing_auth_index'));
-  }
-
-  const [usageResult, profileResult] = await Promise.allSettled([
-    apiCallApi.request({
-      authIndex,
-      method: 'GET',
-      url: CLAUDE_USAGE_URL,
-      header: { ...CLAUDE_REQUEST_HEADERS },
-    }),
-    apiCallApi.request({
-      authIndex,
-      method: 'GET',
-      url: CLAUDE_PROFILE_URL,
-      header: { ...CLAUDE_REQUEST_HEADERS },
-    }),
-  ]);
-
-  if (usageResult.status === 'rejected') {
-    throw usageResult.reason;
-  }
-
-  const result = usageResult.value;
-
-  if (result.statusCode < 200 || result.statusCode >= 300) {
-    throw createStatusError(getApiCallErrorMessage(result), result.statusCode);
-  }
-
-  const payload = parseClaudeUsagePayload(result.body ?? result.bodyText);
-  if (!payload) {
+  const windows = claudeWindowsFromServer(file, t);
+  if (windows.length === 0) {
     throw new Error(t('claude_quota.empty_windows'));
   }
-
-  const windows = buildClaudeQuotaWindows(payload, t);
-  const planType =
-    profileResult.status === 'fulfilled' &&
-    profileResult.value.statusCode >= 200 &&
-    profileResult.value.statusCode < 300
-      ? resolveClaudePlanType(
-          parseClaudeProfilePayload(profileResult.value.body ?? profileResult.value.bodyText)
-        )
-      : null;
-
-  return { windows, extraUsage: payload.extra_usage, planType };
+  return { windows, planType: null };
 };
 
 export const CLAUDE_CONFIG: QuotaProviderData<ClaudeQuotaState, ClaudeQuotaData> = {

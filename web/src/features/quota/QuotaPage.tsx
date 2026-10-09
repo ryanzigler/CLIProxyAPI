@@ -302,6 +302,19 @@ export function QuotaPage() {
     }
   }, [disableControls, error, filesGeneration, loading, loadQuota, pageItems, sessionGeneration]);
 
+  // Claude and Codex quota comes from the server's own tracking, so refreshing
+  // one row means re-reading the auth file list, not calling the provider.
+  const refreshEntry = useCallback(
+    (entry: QuotaFileEntry) => {
+      if (entry.type === 'claude' || entry.type === 'codex') {
+        handleRefreshAll();
+        return;
+      }
+      void refreshQuota(entry.file, QUOTA_ADAPTERS[entry.type]);
+    },
+    [handleRefreshAll, refreshQuota]
+  );
+
   useQuotaAutoLoad(
     pageItems,
     disableControls ||
@@ -480,7 +493,7 @@ export function QuotaPage() {
               headlineKeyFor={headlineKeyFor}
               canUseActions={canUseActions}
               resettingQuotaName={resettingQuotaName}
-              onRefresh={(entry) => void refreshQuota(entry.file, QUOTA_ADAPTERS[entry.type])}
+              onRefresh={(entry) => refreshEntry(entry)}
             />
           </>
         ) : (
@@ -494,7 +507,7 @@ export function QuotaPage() {
                 canRefresh={canUseActions && !entry.file.disabled}
                 resetting={resettingQuotaName === getQuotaCacheKey(entry.file)}
                 entranceDelayMs={cardEntranceDelay(index)}
-                onRefresh={() => void refreshQuota(entry.file, QUOTA_ADAPTERS[entry.type])}
+                onRefresh={() => refreshEntry(entry)}
                 onReset={() => resetQuota(entry.file, QUOTA_ADAPTERS[entry.type])}
               />
             ))}
