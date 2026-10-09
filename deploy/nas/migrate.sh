@@ -26,23 +26,33 @@ mkdir -p "$data/config" "$data/auths" "$data/logs" "$project"
 chmod 700 "$data" "$data/config" "$data/auths"
 cp -p "$old"/runtime/auths/*.json "$data/auths/"
 
-# Drop the old plugin and routing blocks, then add the fleet routing settings.
+# Drop the old plugin block and switch routing to earliest-reset, keeping the
+# rest of the routing block (retry, cooldown, affinity TTL) as it is.
 python3 - "$old/runtime/config/config.yaml" "$data/config/config.yaml" <<'PY'
-import sys
+import re, sys
 src, dst = sys.argv[1], sys.argv[2]
-drop = {"plugins", "routing"}
-out, skipping = [], False
+out, block = [], None
+strategy = affinity = False
 for line in open(src).read().splitlines():
-    top = line[:1] not in ("", " ", "\t", "#", "-")
-    if top:
-        skipping = line.split(":", 1)[0].strip().strip("'\"") in drop
-    if not skipping:
-        out.append(line)
-out += [
-    "routing:",
-    "  strategy: earliest-reset",
-    "  session-affinity: true",
-]
+    if line[:1] not in ("", " ", "\t", "#", "-"):
+        block = line.split(":", 1)[0].strip().strip("'\"")
+        if block == "routing" and line.split(":", 1)[1].strip():
+            sys.exit("[migrate] routing is not a block mapping; edit config.yaml by hand")
+    if block == "plugins":
+        continue
+    if block == "routing":
+        if re.match(r"^  strategy:", line):
+            line, strategy = "  strategy: earliest-reset", True
+        elif re.match(r"^  session-affinity:", line):
+            line, affinity = "  session-affinity: true", True
+    out.append(line)
+if not strategy:
+    if "routing:" in out:
+        out.insert(out.index("routing:") + 1, "  strategy: earliest-reset")
+    else:
+        out += ["routing:", "  strategy: earliest-reset"]
+if not affinity:
+    out.insert(out.index("  strategy: earliest-reset") + 1, "  session-affinity: true")
 open(dst, "w").write("\n".join(out) + "\n")
 PY
 chmod 600 "$data/config/config.yaml"
