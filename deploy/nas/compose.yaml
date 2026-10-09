@@ -1,0 +1,23 @@
+# Container Manager project: /volume1/docker/projects/fleet-controller
+# Data: /volume1/docker/fleet-controller (config, auths, logs)
+# Update: change the image tag, then Container Manager > Project > Build.
+services:
+  fleet-controller:
+    container_name: fleet-controller
+    image: ghcr.io/ryanzigler/cliproxyapi:v8.0.23-fleet.1
+    restart: unless-stopped
+    init: true
+    # DSM's Docker can't publish to the NAS loopback; Tailscale Serve proxies
+    # https://nas.tail92f75e.ts.net to 127.0.0.1:8317, so share the host network.
+    network_mode: host
+    environment:
+      - TZ=UTC
+    volumes:
+      - /volume1/docker/fleet-controller/config:/config
+      - /volume1/docker/fleet-controller/auths:/root/.cli-proxy-api
+      - /volume1/docker/fleet-controller/logs:/CLIProxyAPI/logs
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

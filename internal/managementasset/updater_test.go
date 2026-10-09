@@ -134,3 +134,11 @@ func TestAutoUpdateSkipReason(t *testing.T) {
 		})
 	}
 }
+
+func TestAutoUpdateSkipsBakedPanel(t *testing.T) {
+	t.Setenv("MANAGEMENT_PANEL_BAKED", "1")
+	reason, skip := autoUpdateSkipReason(&config.Config{})
+	if !skip || reason == "" {
+		t.Fatalf("autoUpdateSkipReason = %q, %v; want a skip for a baked panel", reason, skip)
+	}
+}

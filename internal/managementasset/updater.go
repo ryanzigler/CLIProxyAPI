@@ -118,6 +118,9 @@ func autoUpdateSkipReason(cfg *config.Config) (string, bool) {
 	if cfg.RemoteManagement.DisableAutoUpdatePanel {
 		return "disable-auto-update-panel is enabled", true
 	}
+	if os.Getenv("MANAGEMENT_PANEL_BAKED") == "1" {
+		return "panel is built into the image", true
+	}
 	return "", false
 }
 

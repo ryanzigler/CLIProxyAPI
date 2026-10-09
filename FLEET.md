@@ -1,0 +1,64 @@
+# Fleet fork
+
+Ryan's fork of [router-for-me/CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI),
+run on a Synology DS218+ as the Claude and Codex account pool behind
+`https://nas.tail92f75e.ts.net`.
+
+## What this fork changes
+
+- **`routing.strategy: earliest-reset`** (`sdk/cliproxy/auth/selector_earliest_reset.go`):
+  - New sessions go to the credential whose weekly quota resets soonest, so capacity
+    that is about to reset is used before it's lost.
+  - A credential with any window at or above `routing.quota-threshold` (default
+    `0.98`) is skipped.
+  - Use it together with upstream's `session-affinity: true`.
+- **Where quota comes from:**
+  - The rate-limit headers upstream already records on every Claude and Codex response:
+    5-hour, 7-day and the Fable `7d_oi` window.
+  - A background reader (`sdk/cliproxy/quota_usage_reader.go`) reads the usage
+    endpoint only for credentials with no reading newer than 30 minutes, one call per
+    minute at most, and backs off on 429.
+  - A failed or throttled read never takes a credential out of rotation. Only
+    upstream's own cooldown after a real 429 does.
+- **Console:** `web/` is the CLI Proxy API Console (v1.25.6) with the Quota Management
+  ledger.
+  - It reads `quota_windows` from `/v0/management/auth-files`, so it never calls
+    Anthropic or OpenAI.
+  - The image builds it into `/CLIProxyAPI/static/management.html`, and
+    `MANAGEMENT_PANEL_BAKED=1` stops the server from replacing it with upstream's
+    release.
+- **Image:** `ghcr.io/ryanzigler/cliproxyapi`, `linux/amd64`, published by
+  `.github/workflows/docker-image.yml` for tags like `v8.0.23-fleet.1`.
+
+## Release
+
+```bash
+git tag v8.0.23-fleet.2 && git push origin v8.0.23-fleet.2
+```
+
+Then change the tag in `/volume1/docker/projects/fleet-controller/compose.yaml` and
+rebuild the project in Container Manager.
+
+## Upstream updates
+
+```bash
+git fetch upstream --tags && git merge v8.0.24
+```
+
+Resolve conflicts, run the tests below, push `main` and tag `v8.0.24-fleet.1`.
+
+## Tests
+
+```bash
+go test ./sdk/cliproxy/... ./internal/managementasset/ ./internal/api/handlers/management/
+cd web && bun install && bun run lint && bun test
+```
+
+## NAS
+
+- **Files:** `deploy/nas/compose.yaml` is the Container Manager project file.
+- **Folders:**
+  - Data: `/volume1/docker/fleet-controller`, holding `config`, `auths` and `logs`.
+  - Project: `/volume1/docker/projects/fleet-controller`.
+- **First move:** `deploy/nas/migrate.sh` moves the old `/volume1/docker/cli-proxy-api`
+  install over once.
