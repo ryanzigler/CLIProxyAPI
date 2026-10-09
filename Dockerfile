@@ -51,6 +51,6 @@ ENV MANAGEMENT_STATIC_PATH=/CLIProxyAPI/static/management.html \
     MANAGEMENT_PANEL_BAKED=1 \
     TZ=UTC
 
-RUN cp /usr/share/zoneinfo/${TZ} /etc/localtime && echo "${TZ}" > /etc/timezone
+RUN ln -sf /usr/share/zoneinfo/Etc/UTC /etc/localtime && echo "Etc/UTC" > /etc/timezone
 
 CMD ["./CLIProxyAPI", "-config", "/config/config.yaml"]
