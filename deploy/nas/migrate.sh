@@ -45,18 +45,13 @@ for line in open(src).read().splitlines():
     if block == "plugins":
         continue
     if block == "routing":
-        if re.match(r"^  strategy:", line):
-            line, strategy = "  strategy: earliest-reset", True
-        elif re.match(r"^  session-affinity:", line):
-            line, affinity = "  session-affinity: true", True
+        if re.match(r"^\s+strategy:", line):
+            line, strategy = re.sub(r"^(\s+)strategy:.*$", r"\1strategy: earliest-reset", line), True
+        elif re.match(r"^\s+session-affinity:\s*\S+\s*$", line):
+            line, affinity = re.sub(r"^(\s+)session-affinity:.*$", r"\1session-affinity: true", line), True
     out.append(line)
-if not strategy:
-    if "routing:" in out:
-        out.insert(out.index("routing:") + 1, "  strategy: earliest-reset")
-    else:
-        out += ["routing:", "  strategy: earliest-reset"]
-if not affinity:
-    out.insert(out.index("  strategy: earliest-reset") + 1, "  session-affinity: true")
+if not (strategy and affinity):
+    sys.exit("[migrate] routing.strategy or routing.session-affinity not found; edit config.yaml by hand")
 open(dst, "w").write("\n".join(out) + "\n")
 PY
 chmod 600 "$data/config/config.yaml"
