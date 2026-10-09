@@ -27,6 +27,7 @@ type configCommit struct {
 
 type routingRuntimeState struct {
 	strategy                 string
+	quotaThreshold           float64
 	sessionAffinity          bool
 	sessionAffinityTTL       time.Duration
 	sessionAffinitySubagents bool
@@ -47,6 +48,9 @@ func normalizedRoutingRuntimeState(cfg *config.Config) routingRuntimeState {
 		state.strategy = "weighted-round-robin"
 	case "fill-first", "fillfirst", "ff":
 		state.strategy = "fill-first"
+	case "earliest-reset", "earliestreset", "er":
+		state.strategy = "earliest-reset"
+		state.quotaThreshold = cfg.Routing.QuotaThreshold
 	}
 	state.sessionAffinity = cfg.Routing.SessionAffinity
 	if ttl := strings.TrimSpace(cfg.Routing.SessionAffinityTTL); ttl != "" {
@@ -70,6 +74,8 @@ func newRoutingSelector(state routingRuntimeState) coreauth.Selector {
 		selector = &coreauth.WeightedRoundRobinSelector{}
 	case "fill-first":
 		selector = &coreauth.FillFirstSelector{}
+	case "earliest-reset":
+		selector = &coreauth.EarliestResetSelector{Threshold: state.quotaThreshold}
 	default:
 		selector = &coreauth.RoundRobinSelector{}
 	}

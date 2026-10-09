@@ -351,8 +351,13 @@ type QuotaExceeded struct {
 // RoutingConfig configures how credentials are selected for requests.
 type RoutingConfig struct {
 	// Strategy selects the credential selection strategy.
-	// Supported values: "round-robin" (default), "weighted-round-robin", "fill-first".
+	// Supported values: "round-robin" (default), "weighted-round-robin", "fill-first",
+	// "earliest-reset".
 	Strategy string `yaml:"strategy,omitempty" json:"strategy,omitempty"`
+
+	// QuotaThreshold is the used fraction (0-1) at which a quota window stops taking
+	// new sessions under the earliest-reset strategy. Default: 0.98.
+	QuotaThreshold float64 `yaml:"quota-threshold,omitempty" json:"quota-threshold,omitempty"`
 
 	// SessionAffinity enables universal session-sticky routing for all clients.
 	// Explicit Claude Code, Codex, OpenCode, and pi session headers are preferred,

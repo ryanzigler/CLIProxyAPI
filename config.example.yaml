@@ -142,7 +142,12 @@ access:
 
 # Routing strategy for selecting credentials when multiple match.
 routing:
-  strategy: "round-robin" # round-robin (default), weighted-round-robin, fill-first
+  strategy: "round-robin" # round-robin (default), weighted-round-robin, fill-first, earliest-reset
+  # earliest-reset sends new sessions to the Claude/Codex credential whose weekly quota
+  # resets soonest, skipping any credential with a quota window at or above quota-threshold.
+  # Quota comes from each response's rate-limit headers, plus a background usage read for
+  # idle credentials (at most one call per minute overall, 30 minutes apart per credential).
+  # quota-threshold: 0.98
   # weighted-round-robin uses each credential's integer weight (default 1, maximum 1,000,000).
   # Non-positive weights exclude the credential while this strategy is active.
   # For OAuth/file credentials, add a top-level numeric "weight" field to the auth JSON.
