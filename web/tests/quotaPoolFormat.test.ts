@@ -34,7 +34,10 @@ describe('date formatting', () => {
 
   test('uses the weekday within a week and the month day beyond it', () => {
     expect(formatWhen(CODEX_EMPTY, NOW, 'en', TZ)).toBe('Sun 4:39 PM');
-    expect(formatWhen(Date.UTC(2026, 10, 10, 0, 39), NOW, 'en', TZ)).toBe('Nov 9, 4:39 PM');
+    // ICU 74 (bun) joins date and time with " at ", ICU 78 (Node, recent browsers) with ", "
+    expect(formatWhen(Date.UTC(2026, 10, 10, 0, 39), NOW, 'en', TZ)).toMatch(
+      /^Nov 9(, | at )4:39 PM$/
+    );
   });
 
   test('replaces narrow and regular no-break spaces with plain spaces', () => {
